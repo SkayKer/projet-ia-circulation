@@ -18,6 +18,13 @@ class TrafficLight:
         self.state = initial_state
         self.timer = 0
         self.cycle_time = cycle_time
+        self.manual_mode = False
+
+    def set_manual_mode(self, enabled):
+        self.manual_mode = enabled
+
+    def set_state(self, state):
+        self.state = state
 
     def toggle(self):
         """Switch the traffic light state."""
@@ -28,6 +35,9 @@ class TrafficLight:
 
     def update(self):
         """Update the traffic light timer and toggle if necessary."""
+        if self.manual_mode:
+            return
+            
         self.timer += 1
         if self.timer >= self.cycle_time:
             self.toggle()
