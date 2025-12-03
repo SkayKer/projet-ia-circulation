@@ -12,6 +12,8 @@ class Car:
         self.waiting = False
         self.entry_direction = None
         self.ticks_in_intersection = 0  # Track time spent in intersection
+        self.total_wait_time = 0  # Total ticks spent waiting at red lights
+        self.current_wait_time = 0  # Current consecutive wait time
 
     def move(self, game_map, traffic_lights, other_cars):
         """
@@ -231,11 +233,21 @@ class Car:
         elif len(valid_dirs) == 1:
             self.direction = valid_dirs[0]
 
+    def increment_wait_time(self):
+        """Called each tick when the car is waiting."""
+        if self.waiting:
+            self.total_wait_time += 1
+            self.current_wait_time += 1
+        else:
+            self.current_wait_time = 0
+
     def get_state(self):
         return {
             "id": self.id,
             "x": self.x,
             "y": self.y,
             "direction": self.direction,
-            "waiting": self.waiting
+            "waiting": self.waiting,
+            "total_wait_time": self.total_wait_time,
+            "current_wait_time": self.current_wait_time
         }

@@ -27,6 +27,6 @@ GREEN = 1
 YELLOW = 2  # Optional, can be added later
 
 # Simulation Settings
-FPS = 20  # Frames per second (simulation speed)
-SPAWN_RATE = 1 # Spawn a car every N ticks (approx) - Faster spawning
+FPS = 30  # Frames per second (simulation speed)
+SPAWN_RATE = 2 # Spawn a car every N ticks (approx) - Faster spawning
 MAX_CARS = 50 # Allow more cars on the map

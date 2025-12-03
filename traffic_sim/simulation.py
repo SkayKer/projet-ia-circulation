@@ -10,6 +10,8 @@ class Simulation:
         self.cars = []
         self.traffic_lights = []
         self.tick_count = 0
+        self.total_wait_time_all_cars = 0  # Cumulative wait time of all cars (including removed)
+        self.total_cars_spawned = 0  # Total number of cars spawned
         self._init_traffic_lights()
 
     def _init_traffic_lights(self):
@@ -55,6 +57,7 @@ class Simulation:
         
         if not occupied:
             self.cars.append(Car(x, y, direction))
+            self.total_cars_spawned += 1
 
     def step(self):
         """Advances the simulation by one tick."""
@@ -74,12 +77,32 @@ class Simulation:
             # Pass other cars to check collisions
             moved = car.move(self.map, self.traffic_lights, self.cars)
             
+            # Update wait time tracking
+            car.increment_wait_time()
+            
             # Check if car has left the map
             if not (0 <= car.x < self.map.width and 0 <= car.y < self.map.height):
                 cars_to_remove.append(car)
 
         for car in cars_to_remove:
+            # Add the car's wait time to the global total before removing
+            self.total_wait_time_all_cars += car.total_wait_time
             self.cars.remove(car)
+
+    def get_total_wait_time(self):
+        """Returns the total wait time of all cars (current + removed)."""
+        current_cars_wait = sum(car.total_wait_time for car in self.cars)
+        return self.total_wait_time_all_cars + current_cars_wait
+    
+    def get_average_wait_time(self):
+        """Returns the average wait time per car."""
+        if self.total_cars_spawned == 0:
+            return 0.0
+        return self.get_total_wait_time() / self.total_cars_spawned
+    
+    def get_current_cars_waiting(self):
+        """Returns the number of cars currently waiting."""
+        return sum(1 for car in self.cars if car.waiting)
 
     def get_state(self):
         """Returns the current state of the simulation (for RL or visualization)."""
@@ -87,5 +110,9 @@ class Simulation:
             "tick": self.tick_count,
             "cars": [car.get_state() for car in self.cars],
             "lights": [(tl.x, tl.y, tl.state) for tl in self.traffic_lights],
-            "map": self.map # Reference to map (static)
+            "map": self.map,
+            "total_wait_time": self.get_total_wait_time(),
+            "average_wait_time": self.get_average_wait_time(),
+            "cars_waiting": self.get_current_cars_waiting(),
+            "total_cars_spawned": self.total_cars_spawned
         }

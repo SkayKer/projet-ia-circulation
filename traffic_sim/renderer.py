@@ -52,7 +52,38 @@ class Renderer:
             end_y = cy + dy * (CELL_SIZE // 2)
             pygame.draw.line(self.screen, (255, 255, 0), (cx, cy), (end_x, end_y), 2)
 
+        # Draw Statistics Panel
+        self._draw_stats(simulation)
+
         pygame.display.flip()
+
+    def _draw_stats(self, simulation):
+        """Draw statistics panel in the top-left corner."""
+        # Semi-transparent background for stats
+        stats_surface = pygame.Surface((220, 100))
+        stats_surface.set_alpha(200)
+        stats_surface.fill((0, 0, 0))
+        self.screen.blit(stats_surface, (5, 5))
+        
+        # Get statistics
+        total_wait = simulation.get_total_wait_time()
+        avg_wait = simulation.get_average_wait_time()
+        cars_waiting = simulation.get_current_cars_waiting()
+        total_cars = len(simulation.cars)
+        
+        # Render text
+        stats = [
+            f"Tick: {simulation.tick_count}",
+            f"Voitures: {total_cars} (en attente: {cars_waiting})",
+            f"Temps attente total: {total_wait}",
+            f"Temps attente moyen: {avg_wait:.2f}",
+        ]
+        
+        y_offset = 10
+        for stat in stats:
+            text = self.font.render(stat, True, (255, 255, 255))
+            self.screen.blit(text, (10, y_offset))
+            y_offset += 20
 
     def handle_events(self):
         """Handles Pygame events (quit, etc.). Returns False if should quit."""
