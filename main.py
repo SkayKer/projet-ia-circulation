@@ -18,8 +18,8 @@ def main():
         running = True
         
         while running:
-            # 1. Handle Input
-            running = renderer.handle_events()
+            # 1. Handle Input (pass simulation for slider control)
+            running = renderer.handle_events(sim)
             
             # 2. Update Simulation
             sim.step()
