@@ -16,7 +16,7 @@ class Map:
         Right-Hand Traffic (RHT).
         
         Vertical Roads:
-        - Road 1: x=10 (Southbound), x=11 (Northbound)
+        - Road 1: x=20 (Southbound), x=21 (Northbound)  <-- MOVED from 10,11
         - Road 2: x=5 (Southbound), x=6 (Northbound)
         
         Horizontal Road:
@@ -24,7 +24,7 @@ class Map:
         
         Intersections (2x2):
         - (5, 10), (6, 10), (5, 11), (6, 11)
-        - (10, 10), (11, 10), (10, 11), (11, 11)
+        - (20, 10), (21, 10), (20, 11), (21, 11) <-- MOVED
         """
         # Fill background with some buildings randomly
         for y in range(self.height):
@@ -38,10 +38,10 @@ class Map:
             self.grid[10][x] = ROAD
             self.grid[11][x] = ROAD
         
-        # Vertical road 1 (x=10 Southbound, x=11 Northbound)
+        # Vertical road 1 (x=20 Southbound, x=21 Northbound)
         for y in range(self.height):
-            self.grid[y][10] = ROAD
-            self.grid[y][11] = ROAD
+            self.grid[y][20] = ROAD
+            self.grid[y][21] = ROAD
 
         # Vertical road 2 (x=5 Southbound, x=6 Northbound)
         for y in range(self.height):
@@ -57,7 +57,7 @@ class Map:
         
         # Intersection 2
         for y in [10, 11]:
-            for x in [10, 11]:
+            for x in [20, 21]:
                 self.grid[y][x] = INTERSECTION
                 self.intersections.append((x, y))
 
@@ -66,8 +66,8 @@ class Map:
         self.spawn_points = [
             (0, 11, EAST),     # Horizontal Eastbound start
             (self.width-1, 10, WEST), # Horizontal Westbound start
-            (10, 0, SOUTH),    # Vertical 1 Southbound start
-            (11, self.height-1, NORTH), # Vertical 1 Northbound start
+            (20, 0, SOUTH),    # Vertical 1 Southbound start
+            (21, self.height-1, NORTH), # Vertical 1 Northbound start
             (5, 0, SOUTH),     # Vertical 2 Southbound start
             (6, self.height-1, NORTH)   # Vertical 2 Northbound start
         ]
@@ -96,7 +96,7 @@ class Map:
         if y == 10: allowed.append(WEST)
         
         # Vertical Roads
-        if x == 10 or x == 5: allowed.append(SOUTH)
-        if x == 11 or x == 6: allowed.append(NORTH)
+        if x == 20 or x == 5: allowed.append(SOUTH)
+        if x == 21 or x == 6: allowed.append(NORTH)
 
         return allowed

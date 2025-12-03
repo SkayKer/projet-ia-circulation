@@ -11,6 +11,7 @@ class Car:
         self.speed = 1  # Cells per tick
         self.waiting = False
         self.entry_direction = None
+        self.ticks_in_intersection = 0  # Track time spent in intersection
 
     def move(self, game_map, traffic_lights, other_cars):
         """
@@ -19,6 +20,13 @@ class Car:
         dx, dy = self.direction
         next_x = self.x + dx
         next_y = self.y + dy
+        
+        # Track if currently in intersection
+        currently_in_intersection = game_map.is_intersection(self.x, self.y)
+        if currently_in_intersection:
+            self.ticks_in_intersection += 1
+        else:
+            self.ticks_in_intersection = 0
 
         # 1. Check Map Boundaries and Road Validity
         if not (0 <= next_x < game_map.width and 0 <= next_y < game_map.height):
@@ -51,7 +59,9 @@ class Car:
             
         # Check if there is a light at (check_x, check_y)
         # AND if the next cell is actually an intersection (to avoid checking lights when just driving)
-        if game_map.is_intersection(next_x, next_y):
+        next_is_intersection = game_map.is_intersection(next_x, next_y)
+        
+        if next_is_intersection:
             light = None
             for tl in traffic_lights:
                 if tl.x == check_x and tl.y == check_y:
@@ -61,112 +71,165 @@ class Car:
             if light and light.is_red():
                 self.waiting = True
                 return False # Stop at red light
+            
+            # 2b. Check if intersection is safe to enter
+            # Don't enter if there's a car in the intersection going in a conflicting direction
+            if not currently_in_intersection:
+                for car in other_cars:
+                    if car.id != self.id and game_map.is_intersection(car.x, car.y):
+                        # Check if the other car is going in a perpendicular direction (conflict)
+                        if self._is_conflicting_direction(car.direction):
+                            self.waiting = True
+                            return False  # Wait for intersection to clear
 
         # 3. Check Collision with Other Cars
         for car in other_cars:
             if car.id != self.id and car.x == next_x and car.y == next_y:
+                # If we're stuck in intersection for too long, give priority to exit
+                if currently_in_intersection and self.ticks_in_intersection > 3:
+                    # Check if the blocking car is NOT in intersection - we have priority
+                    if not game_map.is_intersection(car.x, car.y):
+                        continue  # Ignore this car, force our way out
                 self.waiting = True
-                return False # Stop behind car
+                return False  # Stop behind car
+        
+        # 4. Deadlock prevention: If stuck in intersection too long, try alternative direction
+        if currently_in_intersection and self.ticks_in_intersection > 5:
+            allowed_dirs = game_map.get_allowed_directions(self.x, self.y)
+            for alt_dir in allowed_dirs:
+                if alt_dir == self.direction:
+                    continue
+                # Check if this direction is clear
+                alt_next_x = self.x + alt_dir[0]
+                alt_next_y = self.y + alt_dir[1]
+                is_clear = True
+                for car in other_cars:
+                    if car.id != self.id and car.x == alt_next_x and car.y == alt_next_y:
+                        is_clear = False
+                        break
+                if is_clear and game_map.is_road(alt_next_x, alt_next_y):
+                    # Take this alternative route to escape deadlock
+                    self.direction = alt_dir
+                    self.x = alt_next_x
+                    self.y = alt_next_y
+                    self.waiting = False
+                    self.ticks_in_intersection = 0
+                    return True
 
-        # If all clear, move
+        # 5. If all clear, move
         self.x = next_x
         self.y = next_y
         self.waiting = False
         
-        # Update direction with probabilistic logic
+        # 6. Update direction at intersection
+        self._update_direction_at_intersection(game_map)
+        
+        return True
+
+    def _is_conflicting_direction(self, other_direction):
+        """Check if another car's direction conflicts with ours (perpendicular)."""
+        # Same or opposite direction = no conflict (parallel traffic)
+        if self.direction == other_direction:
+            return False
+        if self.direction[0] == -other_direction[0] and self.direction[1] == -other_direction[1]:
+            return False
+        # Perpendicular directions = conflict
+        return True
+
+    def _update_direction_at_intersection(self, game_map):
+        """Update direction with probabilistic logic at intersections."""
         allowed_dirs = game_map.get_allowed_directions(self.x, self.y)
         
         # Track Intersection Entry/Exit
         is_in_intersection = game_map.is_intersection(self.x, self.y)
-        # We need to know if we JUST entered. 
-        # But we already moved. So 'self.x, self.y' is current pos.
-        # We need previous pos to know if we entered.
-        # Actually, we can just check: if in intersection and entry_dir is None, set it.
-        # (Assuming we don't spawn in intersection).
         
         if is_in_intersection:
             if self.entry_direction is None:
                 self.entry_direction = self.direction
         else:
-            if self.entry_direction is not None:
-                # Left intersection
-                pass
             self.entry_direction = None
 
-        if allowed_dirs:
-            # Filter based on Entry Direction
-            if self.entry_direction:
-                filtered_dirs = []
-                for d in allowed_dirs:
-                    # Prevent U-turn relative to ENTRY direction
-                    if d[0] == -self.entry_direction[0] and d[1] == -self.entry_direction[1]:
-                        continue
-                    filtered_dirs.append(d)
-                
-                if filtered_dirs:
-                    allowed_dirs = filtered_dirs
-            
-            # Also filter immediate U-turns (just in case)
-            if len(allowed_dirs) > 1:
-                filtered_dirs = []
-                for d in allowed_dirs:
-                    if d[0] == -self.direction[0] and d[1] == -self.direction[1]:
-                        continue
-                    filtered_dirs.append(d)
-                if filtered_dirs:
-                    allowed_dirs = filtered_dirs
+        if not allowed_dirs:
+            return
 
-            valid_dirs = allowed_dirs
+        # Filter based on Entry Direction
+        if self.entry_direction:
+            filtered_dirs = []
+            for d in allowed_dirs:
+                # Prevent U-turn relative to ENTRY direction
+                if d[0] == -self.entry_direction[0] and d[1] == -self.entry_direction[1]:
+                    continue
+                filtered_dirs.append(d)
             
-            if len(valid_dirs) > 1:
-                # Identify turn types
-                options = {}
-                for d in valid_dirs:
-                    if d == self.direction:
-                        options["STRAIGHT"] = d
-                    else:
-                        # Determine Left vs Right
-                        is_right = False
-                        if self.direction == NORTH and d == EAST: is_right = True
-                        elif self.direction == EAST and d == SOUTH: is_right = True
-                        elif self.direction == SOUTH and d == WEST: is_right = True
-                        elif self.direction == WEST and d == NORTH: is_right = True
-                        
-                        if is_right:
-                            options["RIGHT"] = d
-                        else:
-                            options["LEFT"] = d
-                
-                # Apply Probabilities
-                # 1. Entry Case (Straight + Right): 1/3 Right, 2/3 Straight
-                if "STRAIGHT" in options and "RIGHT" in options and "LEFT" not in options:
-                    if random.random() < 0.333:
-                        self.direction = options["RIGHT"]
-                    else:
-                        self.direction = options["STRAIGHT"]
-                
-                # 2. Exit Case (Straight + Left): 1/2 Left, 1/2 Straight (conditional probability)
-                elif "STRAIGHT" in options and "LEFT" in options and "RIGHT" not in options:
-                    if random.random() < 0.5:
-                        self.direction = options["LEFT"]
-                    else:
-                        self.direction = options["STRAIGHT"]
-                        
-                # 3. All 3 available (Generic intersection): 1/3 each
-                elif "STRAIGHT" in options and "LEFT" in options and "RIGHT" in options:
-                    r = random.random()
-                    if r < 0.333: self.direction = options["RIGHT"]
-                    elif r < 0.666: self.direction = options["LEFT"]
-                    else: self.direction = options["STRAIGHT"]
-                    
-                # 4. Forced Turn (no straight)
-                elif "STRAIGHT" not in options:
-                    self.direction = random.choice(list(options.values()))
-                    
-            elif len(valid_dirs) == 1:
-                self.direction = valid_dirs[0]
+            if filtered_dirs:
+                allowed_dirs = filtered_dirs
+        
+        # Also filter immediate U-turns (just in case)
+        if len(allowed_dirs) > 1:
+            filtered_dirs = []
+            for d in allowed_dirs:
+                if d[0] == -self.direction[0] and d[1] == -self.direction[1]:
+                    continue
+                filtered_dirs.append(d)
+            if filtered_dirs:
+                allowed_dirs = filtered_dirs
 
-        return True
+        valid_dirs = allowed_dirs
+        
+        if len(valid_dirs) > 1:
+            # Identify turn types
+            options = {}
+            for d in valid_dirs:
+                if d == self.direction:
+                    options["STRAIGHT"] = d
+                else:
+                    # Determine Left vs Right
+                    is_right = False
+                    if self.direction == NORTH and d == EAST:
+                        is_right = True
+                    elif self.direction == EAST and d == SOUTH:
+                        is_right = True
+                    elif self.direction == SOUTH and d == WEST:
+                        is_right = True
+                    elif self.direction == WEST and d == NORTH:
+                        is_right = True
+                    
+                    if is_right:
+                        options["RIGHT"] = d
+                    else:
+                        options["LEFT"] = d
+            
+            # Apply Probabilities
+            # 1. Entry Case (Straight + Right): 1/3 Right, 2/3 Straight
+            if "STRAIGHT" in options and "RIGHT" in options and "LEFT" not in options:
+                if random.random() < 0.333:
+                    self.direction = options["RIGHT"]
+                else:
+                    self.direction = options["STRAIGHT"]
+            
+            # 2. Exit Case (Straight + Left): 1/2 Left, 1/2 Straight
+            elif "STRAIGHT" in options and "LEFT" in options and "RIGHT" not in options:
+                if random.random() < 0.5:
+                    self.direction = options["LEFT"]
+                else:
+                    self.direction = options["STRAIGHT"]
+                    
+            # 3. All 3 available (Generic intersection): 1/3 each
+            elif "STRAIGHT" in options and "LEFT" in options and "RIGHT" in options:
+                r = random.random()
+                if r < 0.333:
+                    self.direction = options["RIGHT"]
+                elif r < 0.666:
+                    self.direction = options["LEFT"]
+                else:
+                    self.direction = options["STRAIGHT"]
+                
+            # 4. Forced Turn (no straight)
+            elif "STRAIGHT" not in options:
+                self.direction = random.choice(list(options.values()))
+                
+        elif len(valid_dirs) == 1:
+            self.direction = valid_dirs[0]
 
     def get_state(self):
         return {

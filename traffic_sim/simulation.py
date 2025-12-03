@@ -20,8 +20,8 @@ class Simulation:
         # Intersection 1: x=[5,6], y=[10,11]
         self._add_intersection_lights(5, 6, 10, 11)
         
-        # Intersection 2: x=[10,11], y=[10,11]
-        self._add_intersection_lights(10, 11, 10, 11)
+        # Intersection 2: x=[20,21], y=[10,11]
+        self._add_intersection_lights(20, 21, 10, 11)
 
     def _add_intersection_lights(self, x_min, x_max, y_min, y_max):
         # Vertical Lights (Control N/S flow)
