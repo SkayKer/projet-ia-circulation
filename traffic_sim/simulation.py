@@ -23,29 +23,48 @@ class Simulation:
 
     def _init_traffic_lights(self):
         """Initialize traffic lights at intersections."""
+        self.intersections = {} # ID -> {lights: [], bounds: ...}
+
         # We need lights at the ENTRY points of intersections.
         # But now placed to the RIGHT of the road.
         
-        # Intersection 1: x=[5,6], y=[10,11]
-        self._add_intersection_lights(5, 6, 10, 11)
+        # Intersection 0: x=[5,6], y=[10,11]
+        self.intersections[0] = {
+            "lights": self._add_intersection_lights(5, 6, 10, 11),
+            "bounds": (5, 6, 10, 11)
+        }
         
-        # Intersection 2: x=[20,21], y=[10,11]
-        self._add_intersection_lights(20, 21, 10, 11)
+        # Intersection 1: x=[20,21], y=[10,11]
+        self.intersections[1] = {
+            "lights": self._add_intersection_lights(20, 21, 10, 11),
+            "bounds": (20, 21, 10, 11)
+        }
 
     def _add_intersection_lights(self, x_min, x_max, y_min, y_max):
+        lights = []
         # Vertical Lights (Control N/S flow)
         # Southbound entry: Road is x=x_min, Stop line y=y_min-1. Light to right -> (x_min-1, y_min-1)
-        self.traffic_lights.append(TrafficLight(x_min - 1, y_min - 1, axis='VERTICAL', initial_state=GREEN))
+        l1 = TrafficLight(x_min - 1, y_min - 1, axis='VERTICAL', initial_state=GREEN)
+        self.traffic_lights.append(l1)
+        lights.append(l1)
         
         # Northbound entry: Road is x=x_max, Stop line y=y_max+1. Light to right -> (x_max+1, y_max+1)
-        self.traffic_lights.append(TrafficLight(x_max + 1, y_max + 1, axis='VERTICAL', initial_state=GREEN))
+        l2 = TrafficLight(x_max + 1, y_max + 1, axis='VERTICAL', initial_state=GREEN)
+        self.traffic_lights.append(l2)
+        lights.append(l2)
 
         # Horizontal Lights (Control E/W flow)
         # Eastbound entry: Road is y=y_max, Stop line x=x_min-1. Light to right -> (x_min-1, y_max+1)
-        self.traffic_lights.append(TrafficLight(x_min - 1, y_max + 1, axis='HORIZONTAL', initial_state=RED))
+        l3 = TrafficLight(x_min - 1, y_max + 1, axis='HORIZONTAL', initial_state=RED)
+        self.traffic_lights.append(l3)
+        lights.append(l3)
         
         # Westbound entry: Road is y=y_min, Stop line x=x_max+1. Light to right -> (x_max+1, y_min-1)
-        self.traffic_lights.append(TrafficLight(x_max + 1, y_min - 1, axis='HORIZONTAL', initial_state=RED))
+        l4 = TrafficLight(x_max + 1, y_min - 1, axis='HORIZONTAL', initial_state=RED)
+        self.traffic_lights.append(l4)
+        lights.append(l4)
+        
+        return lights
 
     def spawn_car(self):
         """Attempts to spawn a new car at a random spawn point."""
@@ -217,3 +236,71 @@ class Simulation:
             "cars_waiting": self.get_current_cars_waiting(),
             "total_cars_spawned": self.total_cars_spawned
         }
+
+    def get_intersection_queues(self, intersection_id):
+        """
+        Returns the number of waiting cars for each arm of the intersection.
+        Order: [Northbound, Southbound, Eastbound, Westbound]
+        """
+        if intersection_id not in self.intersections:
+            return [0, 0, 0, 0]
+            
+        bounds = self.intersections[intersection_id]["bounds"]
+        x_min, x_max, y_min, y_max = bounds
+        
+        # Queues
+        nb_queue = 0
+        sb_queue = 0
+        eb_queue = 0
+        wb_queue = 0
+        
+        for car in self.cars:
+            if not car.waiting:
+                continue
+                
+            # Northbound (going North, so y > y_max)
+            if car.direction == "NORTH" and car.x == x_max and car.y > y_max and car.y <= y_max + 5:
+                nb_queue += 1
+            # Southbound (going South, so y < y_min)
+            elif car.direction == "SOUTH" and car.x == x_min and car.y < y_min and car.y >= y_min - 5:
+                sb_queue += 1
+            # Eastbound (going East, so x < x_min)
+            elif car.direction == "EAST" and car.y == y_max and car.x < x_min and car.x >= x_min - 5:
+                eb_queue += 1
+            # Westbound (going West, so x > x_max)
+            elif car.direction == "WEST" and car.y == y_min and car.x > x_max and car.x <= x_max + 5:
+                wb_queue += 1
+                
+        return [nb_queue, sb_queue, eb_queue, wb_queue]
+
+    def set_intersection_light_phase(self, intersection_id, phase):
+        """
+        Sets the phase of the intersection.
+        phase 0: Vertical GREEN, Horizontal RED
+        phase 1: Vertical RED, Horizontal GREEN
+        """
+        if intersection_id not in self.intersections:
+            return
+            
+        lights = self.intersections[intersection_id]["lights"]
+        
+        # Lights order in _add_intersection_lights:
+        # 0: Vertical (Southbound)
+        # 1: Vertical (Northbound)
+        # 2: Horizontal (Eastbound)
+        # 3: Horizontal (Westbound)
+        
+        if phase == 0: # Vertical Green
+            lights[0].set_state(GREEN)
+            lights[1].set_state(GREEN)
+            lights[2].set_state(RED)
+            lights[3].set_state(RED)
+        elif phase == 1: # Horizontal Green
+            lights[0].set_state(RED)
+            lights[1].set_state(RED)
+            lights[2].set_state(GREEN)
+            lights[3].set_state(GREEN)
+            
+        # Ensure manual mode is on
+        for l in lights:
+            l.set_manual_mode(True)

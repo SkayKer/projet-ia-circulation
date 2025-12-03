@@ -124,7 +124,7 @@ class Car:
         self.waiting = False
         
         # 6. Update direction at intersection
-        self._update_direction_at_intersection(game_map)
+        self._update_direction_at_intersection(game_map, other_cars)
         
         return True
 
@@ -138,7 +138,7 @@ class Car:
         # Perpendicular directions = conflict
         return True
 
-    def _update_direction_at_intersection(self, game_map):
+    def _update_direction_at_intersection(self, game_map, other_cars):
         """Update direction with probabilistic logic at intersections."""
         allowed_dirs = game_map.get_allowed_directions(self.x, self.y)
         
@@ -175,6 +175,25 @@ class Car:
                 filtered_dirs.append(d)
             if filtered_dirs:
                 allowed_dirs = filtered_dirs
+
+        # NEW: Filter out directions where the target cell is occupied
+        # Only apply this if we have multiple choices (if only 1, we must take it)
+        if len(allowed_dirs) > 1:
+            non_blocked_dirs = []
+            for d in allowed_dirs:
+                target_x = self.x + d[0]
+                target_y = self.y + d[1]
+                is_blocked = False
+                for car in other_cars:
+                    if car.id != self.id and car.x == target_x and car.y == target_y:
+                        is_blocked = True
+                        break
+                if not is_blocked:
+                    non_blocked_dirs.append(d)
+            
+            # If we have at least one non-blocked direction, restrict to those
+            if non_blocked_dirs:
+                allowed_dirs = non_blocked_dirs
 
         valid_dirs = allowed_dirs
         

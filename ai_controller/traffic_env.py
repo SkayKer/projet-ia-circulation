@@ -16,7 +16,7 @@ class TrafficEnv:
         
         # Current phase for each intersection
         self.current_phases = {0: 0, 1: 0} 
-        self.min_phase_time = 10 # Minimum ticks before switching
+        self.min_phase_time = 30 # Minimum ticks before switching
         self.time_since_last_switch = {0: 0, 1: 0}
 
     def reset(self):
@@ -43,10 +43,21 @@ class TrafficEnv:
         # Step simulation
         self.sim.step()
 
-        # Calculate reward (negative total wait time)
-        reward = self.sim.get_current_cars_waiting() 
-        # Or use total wait time: -self.sim.get_total_wait_time() (but this grows indefinitely)
-        # Better: negative sum of squared queues to penalize long queues more
+        # Calculate reward
+        # User request: "reward must be calculated with average wait time, max queue length, 
+        # and average queue length. More importance on time saved than on average queue length."
+        
+        avg_wait_10s = self.sim.get_average_wait_time_last_10s()
+        max_queue = self.sim.get_max_queue_length()
+        avg_queue = self.sim.get_average_queue_length()
+        
+        # Weights
+        w_wait = 2.0
+        w_max_q = 0.5
+        w_avg_q = 0.1
+        
+        # Negative reward (penalty)
+        reward = - (w_wait * avg_wait_10s + w_max_q * max_queue + w_avg_q * avg_queue)
         
         done = False # Continuous task
         if self.sim.tick_count >= 2000: # Max episode length
