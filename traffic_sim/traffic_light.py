@@ -1,7 +1,7 @@
 from .constants import RED, GREEN
 
 class TrafficLight:
-    def __init__(self, x, y, axis, initial_state=RED, cycle_time=30):
+    def __init__(self, x, y, axis, initial_state=RED, cycle_time=60):
         """
         Initialize a traffic light at a specific position.
         
