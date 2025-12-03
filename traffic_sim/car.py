@@ -10,6 +10,7 @@ class Car:
         self.direction = direction
         self.speed = 1  # Cells per tick
         self.waiting = False
+        self.entry_direction = None
 
     def move(self, game_map, traffic_lights, other_cars):
         """
@@ -75,8 +76,46 @@ class Car:
         # Update direction with probabilistic logic
         allowed_dirs = game_map.get_allowed_directions(self.x, self.y)
         
+        # Track Intersection Entry/Exit
+        is_in_intersection = game_map.is_intersection(self.x, self.y)
+        # We need to know if we JUST entered. 
+        # But we already moved. So 'self.x, self.y' is current pos.
+        # We need previous pos to know if we entered.
+        # Actually, we can just check: if in intersection and entry_dir is None, set it.
+        # (Assuming we don't spawn in intersection).
+        
+        if is_in_intersection:
+            if self.entry_direction is None:
+                self.entry_direction = self.direction
+        else:
+            if self.entry_direction is not None:
+                # Left intersection
+                pass
+            self.entry_direction = None
+
         if allowed_dirs:
-            # Filter to ensure we don't do immediate 180 unless necessary (not an issue with current map flow)
+            # Filter based on Entry Direction
+            if self.entry_direction:
+                filtered_dirs = []
+                for d in allowed_dirs:
+                    # Prevent U-turn relative to ENTRY direction
+                    if d[0] == -self.entry_direction[0] and d[1] == -self.entry_direction[1]:
+                        continue
+                    filtered_dirs.append(d)
+                
+                if filtered_dirs:
+                    allowed_dirs = filtered_dirs
+            
+            # Also filter immediate U-turns (just in case)
+            if len(allowed_dirs) > 1:
+                filtered_dirs = []
+                for d in allowed_dirs:
+                    if d[0] == -self.direction[0] and d[1] == -self.direction[1]:
+                        continue
+                    filtered_dirs.append(d)
+                if filtered_dirs:
+                    allowed_dirs = filtered_dirs
+
             valid_dirs = allowed_dirs
             
             if len(valid_dirs) > 1:
