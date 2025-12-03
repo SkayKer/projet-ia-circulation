@@ -209,3 +209,5 @@ __marimo__/
 # AI Controller
 ai_controller/q_agent.pkl
 
+q_agent.pkl
+
