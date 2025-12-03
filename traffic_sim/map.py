@@ -90,16 +90,13 @@ class Map:
         Returns a list of allowed directions for a given cell.
         Based on RHT logic.
         """
+        allowed = []
         # Horizontal Road
-        if y == 11: return [EAST]
-        if y == 10: return [WEST]
+        if y == 11: allowed.append(EAST)
+        if y == 10: allowed.append(WEST)
         
         # Vertical Roads
-        if x == 10 or x == 5: return [SOUTH]
-        if x == 11 or x == 6: return [NORTH]
+        if x == 10 or x == 5: allowed.append(SOUTH)
+        if x == 11 or x == 6: allowed.append(NORTH)
 
-        # Intersections: Allow straight through (simplified)
-        # Ideally, we allow turning, but for now, keep direction.
-        # This method is mainly used to correct cars if they get lost, 
-        # but cars usually keep their direction.
-        return []
+        return allowed

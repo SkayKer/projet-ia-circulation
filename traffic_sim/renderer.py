@@ -32,7 +32,11 @@ class Renderer:
             cx = tl.x * CELL_SIZE + CELL_SIZE // 2
             cy = tl.y * CELL_SIZE + CELL_SIZE // 2
             color = (255, 0, 0) if tl.is_red() else (0, 255, 0)
-            pygame.draw.circle(self.screen, color, (cx, cy), CELL_SIZE // 3)
+            
+            # Draw a small box for the light housing
+            light_rect = (tl.x * CELL_SIZE + 5, tl.y * CELL_SIZE + 5, CELL_SIZE - 10, CELL_SIZE - 10)
+            pygame.draw.rect(self.screen, (0, 0, 0), light_rect)
+            pygame.draw.circle(self.screen, color, (cx, cy), CELL_SIZE // 3 - 2)
 
         # Draw Cars
         for car in simulation.cars:

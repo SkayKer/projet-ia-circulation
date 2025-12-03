@@ -1,4 +1,5 @@
 import uuid
+import random
 from .constants import NORTH, SOUTH, EAST, WEST
 
 class Car:
@@ -13,17 +14,12 @@ class Car:
     def move(self, game_map, traffic_lights, other_cars):
         """
         Attempts to move the car one step in its current direction.
-        Checks for:
-        1. Map boundaries and road validity.
-        2. Traffic lights at intersections.
-        3. Collision with other cars.
         """
         dx, dy = self.direction
         next_x = self.x + dx
         next_y = self.y + dy
 
         # 1. Check Map Boundaries and Road Validity
-        # Check if we are leaving the map
         if not (0 <= next_x < game_map.width and 0 <= next_y < game_map.height):
             # Allow moving off-map so simulation can remove the car
             self.x = next_x
@@ -31,43 +27,39 @@ class Car:
             return True
 
         if not game_map.is_road(next_x, next_y):
-            # End of road (but inside map), remove car or stop?
-            # For now, stop.
             return False  # Cannot move
 
         # 2. Check Traffic Lights
-        # Check if the NEXT cell is a traffic light location
-        # In our new logic, lights are placed at the cell BEFORE the intersection.
-        # So if we are AT a light's location, we check it before moving into the intersection.
+        # We need to check if there is a light controlling the entry to the NEXT cell (intersection).
+        # Logic: If I am at the stop line (cell before intersection), check the light to my RIGHT.
         
-        # Wait, if the light is at (x, y) (current pos), we check it before moving to next.
-        # OR if the light is at next_x, next_y.
-        # Our placement: Light is at the "Stop line".
-        # If I am at the stop line, I check the light.
-        
-        light = None
-        for tl in traffic_lights:
-            if tl.x == self.x and tl.y == self.y: # Light is at my current position
-                light = tl
-                break
-        
-        # If there is a light where I am, and I want to move forward (into intersection), check it.
-        # Actually, usually you stop BEFORE the line.
-        # Let's say the light is at `next_x, next_y`.
-        # If `next_x, next_y` is the light position, I can't enter it if red?
-        # No, the light object is just a logical marker.
-        # Let's stick to: If `next_x, next_y` is an INTERSECTION, check if there is a light controlling my entry.
-        
-        # Simpler approach matching `_init_traffic_lights`:
-        # Lights are placed at specific coordinates (the cell BEFORE the intersection).
-        # If I am AT that coordinate, I must check the light before moving.
-        
-        if light and light.is_red():
-             # I am at a light, and it is red. I cannot move.
-             self.waiting = True
-             return False
-
-        # 3. Check Collision with Other Cars
+        # Determine where "Right" is based on direction
+        check_x, check_y = -1, -1
+        if self.direction == SOUTH:
+            # I am at (x, y). Light should be at (x-1, y)
+            check_x, check_y = self.x - 1, self.y
+        elif self.direction == NORTH:
+            # Light at (x+1, y)
+            check_x, check_y = self.x + 1, self.y
+        elif self.direction == EAST:
+            # Light at (x, y+1)
+            check_x, check_y = self.x, self.y + 1
+        elif self.direction == WEST:
+            # Light at (x, y-1)
+            check_x, check_y = self.x, self.y - 1
+            
+        # Check if there is a light at (check_x, check_y)
+        # AND if the next cell is actually an intersection (to avoid checking lights when just driving)
+        if game_map.is_intersection(next_x, next_y):
+            light = None
+            for tl in traffic_lights:
+                if tl.x == check_x and tl.y == check_y:
+                    light = tl
+                    break
+            
+            if light and light.is_red():
+                self.waiting = True
+                return False # Stop at red light
 
         # 3. Check Collision with Other Cars
         for car in other_cars:
@@ -80,12 +72,60 @@ class Car:
         self.y = next_y
         self.waiting = False
         
-        # Update direction if needed (simple logic for now: keep going or turn at intersection if forced)
-        # For this simple version, cars just go straight unless the map forces a turn (not implemented yet)
-        # But we should check if the new cell allows the current direction, if not, pick a valid one.
+        # Update direction with probabilistic logic
         allowed_dirs = game_map.get_allowed_directions(self.x, self.y)
-        if self.direction not in allowed_dirs and allowed_dirs:
-             self.direction = allowed_dirs[0] # Force turn if necessary
+        
+        if allowed_dirs:
+            # Filter to ensure we don't do immediate 180 unless necessary (not an issue with current map flow)
+            valid_dirs = allowed_dirs
+            
+            if len(valid_dirs) > 1:
+                # Identify turn types
+                options = {}
+                for d in valid_dirs:
+                    if d == self.direction:
+                        options["STRAIGHT"] = d
+                    else:
+                        # Determine Left vs Right
+                        is_right = False
+                        if self.direction == NORTH and d == EAST: is_right = True
+                        elif self.direction == EAST and d == SOUTH: is_right = True
+                        elif self.direction == SOUTH and d == WEST: is_right = True
+                        elif self.direction == WEST and d == NORTH: is_right = True
+                        
+                        if is_right:
+                            options["RIGHT"] = d
+                        else:
+                            options["LEFT"] = d
+                
+                # Apply Probabilities
+                # 1. Entry Case (Straight + Right): 1/3 Right, 2/3 Straight
+                if "STRAIGHT" in options and "RIGHT" in options and "LEFT" not in options:
+                    if random.random() < 0.333:
+                        self.direction = options["RIGHT"]
+                    else:
+                        self.direction = options["STRAIGHT"]
+                
+                # 2. Exit Case (Straight + Left): 1/2 Left, 1/2 Straight (conditional probability)
+                elif "STRAIGHT" in options and "LEFT" in options and "RIGHT" not in options:
+                    if random.random() < 0.5:
+                        self.direction = options["LEFT"]
+                    else:
+                        self.direction = options["STRAIGHT"]
+                        
+                # 3. All 3 available (Generic intersection): 1/3 each
+                elif "STRAIGHT" in options and "LEFT" in options and "RIGHT" in options:
+                    r = random.random()
+                    if r < 0.333: self.direction = options["RIGHT"]
+                    elif r < 0.666: self.direction = options["LEFT"]
+                    else: self.direction = options["STRAIGHT"]
+                    
+                # 4. Forced Turn (no straight)
+                elif "STRAIGHT" not in options:
+                    self.direction = random.choice(list(options.values()))
+                    
+            elif len(valid_dirs) == 1:
+                self.direction = valid_dirs[0]
 
         return True
 

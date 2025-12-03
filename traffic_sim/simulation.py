@@ -15,36 +15,28 @@ class Simulation:
     def _init_traffic_lights(self):
         """Initialize traffic lights at intersections."""
         # We need lights at the ENTRY points of intersections.
+        # But now placed to the RIGHT of the road.
+        
         # Intersection 1: x=[5,6], y=[10,11]
-        # Entries:
-        # - Southbound (x=5) at y=9 (Stop line)
-        # - Northbound (x=6) at y=12 (Stop line)
-        # - Eastbound (y=11) at x=4 (Stop line)
-        # - Westbound (y=10) at x=7 (Stop line)
+        self._add_intersection_lights(5, 6, 10, 11)
         
         # Intersection 2: x=[10,11], y=[10,11]
-        # Entries:
-        # - Southbound (x=10) at y=9
-        # - Northbound (x=11) at y=12
-        # - Eastbound (y=11) at x=9
-        # - Westbound (y=10) at x=12
-
-        # Let's create a helper to add a group of lights for an intersection
-        self._add_intersection_lights(5, 6, 10, 11)
         self._add_intersection_lights(10, 11, 10, 11)
 
     def _add_intersection_lights(self, x_min, x_max, y_min, y_max):
         # Vertical Lights (Control N/S flow)
-        # Southbound entry: (x_min, y_min - 1)
-        self.traffic_lights.append(TrafficLight(x_min, y_min - 1, axis='VERTICAL', initial_state=GREEN))
-        # Northbound entry: (x_max, y_max + 1)
-        self.traffic_lights.append(TrafficLight(x_max, y_max + 1, axis='VERTICAL', initial_state=GREEN))
+        # Southbound entry: Road is x=x_min, Stop line y=y_min-1. Light to right -> (x_min-1, y_min-1)
+        self.traffic_lights.append(TrafficLight(x_min - 1, y_min - 1, axis='VERTICAL', initial_state=GREEN))
+        
+        # Northbound entry: Road is x=x_max, Stop line y=y_max+1. Light to right -> (x_max+1, y_max+1)
+        self.traffic_lights.append(TrafficLight(x_max + 1, y_max + 1, axis='VERTICAL', initial_state=GREEN))
 
         # Horizontal Lights (Control E/W flow)
-        # Eastbound entry: (x_min - 1, y_max)
-        self.traffic_lights.append(TrafficLight(x_min - 1, y_max, axis='HORIZONTAL', initial_state=RED))
-        # Westbound entry: (x_max + 1, y_min)
-        self.traffic_lights.append(TrafficLight(x_max + 1, y_min, axis='HORIZONTAL', initial_state=RED))
+        # Eastbound entry: Road is y=y_max, Stop line x=x_min-1. Light to right -> (x_min-1, y_max+1)
+        self.traffic_lights.append(TrafficLight(x_min - 1, y_max + 1, axis='HORIZONTAL', initial_state=RED))
+        
+        # Westbound entry: Road is y=y_min, Stop line x=x_max+1. Light to right -> (x_max+1, y_min-1)
+        self.traffic_lights.append(TrafficLight(x_max + 1, y_min - 1, axis='HORIZONTAL', initial_state=RED))
 
     def spawn_car(self):
         """Attempts to spawn a new car at a random spawn point."""
@@ -69,10 +61,6 @@ class Simulation:
         self.tick_count += 1
 
         # 1. Update Traffic Lights
-        # We need to synchronize them. 
-        # For this simple version, each light updates itself.
-        # BUT we initialized them with opposite states (V=GREEN, H=RED).
-        # As long as they have the same cycle time, they will swap in sync.
         for tl in self.traffic_lights:
             tl.update()
 
@@ -81,19 +69,12 @@ class Simulation:
             self.spawn_car()
 
         # 3. Move Cars
-        # We iterate backwards or create a copy to safely remove cars if needed
-        # But for movement, we should be careful about order. 
-        # Ideally, cars at the front move first.
-        # For simplicity, we just iterate. Collision logic handles "waiting".
-        
         cars_to_remove = []
         for car in self.cars:
             # Pass other cars to check collisions
             moved = car.move(self.map, self.traffic_lights, self.cars)
             
-            # Check if car has left the map (simple check: if it didn't move and wasn't blocked, maybe it's at edge?)
-            # Actually, move() returns False if blocked OR if end of road.
-            # Let's check bounds explicitly to remove cars.
+            # Check if car has left the map
             if not (0 <= car.x < self.map.width and 0 <= car.y < self.map.height):
                 cars_to_remove.append(car)
 
