@@ -3,7 +3,7 @@ from collections import deque
 from .map import Map
 from .car import Car
 from .traffic_light import TrafficLight
-from .constants import SPAWN_RATE, MAX_CARS, RED, GREEN, FPS
+from .constants import SPAWN_RATE, MAX_CARS, RED, GREEN, FPS, CARS_PER_SPAWN
 
 class Simulation:
     def __init__(self):
@@ -93,9 +93,10 @@ class Simulation:
         for tl in self.traffic_lights:
             tl.update()
 
-        # 2. Spawn Cars
+        # 2. Spawn Cars (spawn CARS_PER_SPAWN cars every spawn_rate ticks)
         if self.tick_count % self.spawn_rate == 0:
-            self.spawn_car()
+            for _ in range(CARS_PER_SPAWN):
+                self.spawn_car()
 
         # 3. Move Cars
         cars_to_remove = []
