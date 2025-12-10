@@ -1,6 +1,6 @@
 import uuid
 import random
-from .constants import NORTH, SOUTH, EAST, WEST
+from .constants import NORTH, SOUTH, EAST, WEST, RESTART_DELAY
 
 class Car:
     def __init__(self, x, y, direction):
@@ -14,6 +14,8 @@ class Car:
         self.ticks_in_intersection = 0  # Track time spent in intersection
         self.total_wait_time = 0  # Total ticks spent waiting at red lights
         self.current_wait_time = 0  # Current consecutive wait time
+        self.restart_delay_counter = 0  # Ticks remaining before car can restart (accordion effect)
+        self.was_waiting = False  # Track if car was waiting in previous tick
 
     def move(self, game_map, traffic_lights, other_cars):
         """
@@ -22,6 +24,12 @@ class Car:
         dx, dy = self.direction
         next_x = self.x + dx
         next_y = self.y + dy
+        
+        # Accordion effect: if car was waiting and now wants to move, apply restart delay
+        if self.restart_delay_counter > 0:
+            self.restart_delay_counter -= 1
+            self.waiting = True
+            return False  # Still restarting, cannot move yet
         
         # Track if currently in intersection
         currently_in_intersection = game_map.is_intersection(self.x, self.y)
@@ -72,6 +80,7 @@ class Car:
             
             if light and light.is_red():
                 self.waiting = True
+                self.was_waiting = True
                 return False # Stop at red light
             
             # 2b. Check if intersection is safe to enter
@@ -93,6 +102,7 @@ class Car:
                     if not game_map.is_intersection(car.x, car.y):
                         continue  # Ignore this car, force our way out
                 self.waiting = True
+                self.was_waiting = True
                 return False  # Stop behind car
         
         # 4. Deadlock prevention: If stuck in intersection too long, try alternative direction
@@ -119,6 +129,13 @@ class Car:
                     return True
 
         # 5. If all clear, move
+        # Apply accordion effect: if car was waiting, it needs time to restart
+        if self.was_waiting:
+            self.restart_delay_counter = RESTART_DELAY
+            self.was_waiting = False
+            self.waiting = True
+            return False  # Start restart delay, will move next tick after delay
+        
         self.x = next_x
         self.y = next_y
         self.waiting = False

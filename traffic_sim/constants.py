@@ -31,3 +31,4 @@ FPS = 10  # Frames per second (simulation speed)
 SPAWN_RATE = 2 # Spawn cars every N ticks
 CARS_PER_SPAWN = 2 # Number of cars to spawn every SPAWN_RATE ticks
 MAX_CARS = 100 # Allow more cars on the map
+RESTART_DELAY = 2 # Ticks needed to restart after stopping (accordion effect)
