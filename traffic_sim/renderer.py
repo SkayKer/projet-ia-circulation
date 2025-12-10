@@ -4,17 +4,38 @@ from .constants import *
 class Renderer:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        
+        # Get screen info for adaptive sizing
+        screen_info = pygame.display.Info()
+        max_screen_width = screen_info.current_w
+        max_screen_height = screen_info.current_h
+        
+        # Calculate the ideal cell size to fit the grid on screen (with some margin)
+        margin = 100  # Leave some space for window decorations
+        ideal_cell_width = (max_screen_width - margin) // GRID_SIZE
+        ideal_cell_height = (max_screen_height - margin) // GRID_SIZE
+        self.cell_size = min(ideal_cell_width, ideal_cell_height, CELL_SIZE)
+        
+        # Calculate window dimensions based on cell size
+        self.width = GRID_SIZE * self.cell_size
+        self.height = GRID_SIZE * self.cell_size
+        
+        # Create resizable window
+        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
         pygame.display.set_caption("Traffic Simulator")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("Arial", 12)
         
-        # Slider settings
-        self.slider_x = SCREEN_WIDTH - 220
-        self.slider_y = SCREEN_HEIGHT - 50
+        # Slider settings (will be updated on resize)
+        self._update_slider_position()
         self.slider_width = 200
         self.slider_height = 10
         self.slider_dragging = False
+    
+    def _update_slider_position(self):
+        """Update slider position based on current window size."""
+        self.slider_x = self.width - 220
+        self.slider_y = self.height - 50
 
     def render(self, simulation):
         """Draws the current state of the simulation."""
@@ -24,7 +45,7 @@ class Renderer:
         for y in range(GRID_SIZE):
             for x in range(GRID_SIZE):
                 cell = simulation.map.get_cell(x, y)
-                rect = (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+                rect = (x * self.cell_size, y * self.cell_size, self.cell_size, self.cell_size)
                 
                 if cell == ROAD or cell == INTERSECTION:
                     pygame.draw.rect(self.screen, (50, 50, 50), rect) # Dark Gray Road
@@ -36,27 +57,28 @@ class Renderer:
 
         # Draw Traffic Lights
         for tl in simulation.traffic_lights:
-            cx = tl.x * CELL_SIZE + CELL_SIZE // 2
-            cy = tl.y * CELL_SIZE + CELL_SIZE // 2
+            cx = tl.x * self.cell_size + self.cell_size // 2
+            cy = tl.y * self.cell_size + self.cell_size // 2
             color = (255, 0, 0) if tl.is_red() else (0, 255, 0)
             
             # Draw a small box for the light housing
-            light_rect = (tl.x * CELL_SIZE + 5, tl.y * CELL_SIZE + 5, CELL_SIZE - 10, CELL_SIZE - 10)
+            padding = max(2, self.cell_size // 6)
+            light_rect = (tl.x * self.cell_size + padding, tl.y * self.cell_size + padding, self.cell_size - padding * 2, self.cell_size - padding * 2)
             pygame.draw.rect(self.screen, (0, 0, 0), light_rect)
-            pygame.draw.circle(self.screen, color, (cx, cy), CELL_SIZE // 3 - 2)
+            pygame.draw.circle(self.screen, color, (cx, cy), self.cell_size // 3 - 2)
 
         # Draw Cars
         for car in simulation.cars:
-            cx = car.x * CELL_SIZE + CELL_SIZE // 2
-            cy = car.y * CELL_SIZE + CELL_SIZE // 2
+            cx = car.x * self.cell_size + self.cell_size // 2
+            cy = car.y * self.cell_size + self.cell_size // 2
             
             # Draw car body
-            pygame.draw.circle(self.screen, (0, 0, 255), (cx, cy), CELL_SIZE // 2 - 2)
+            pygame.draw.circle(self.screen, (0, 0, 255), (cx, cy), self.cell_size // 2 - 2)
             
             # Draw direction indicator (small line)
             dx, dy = car.direction
-            end_x = cx + dx * (CELL_SIZE // 2)
-            end_y = cy + dy * (CELL_SIZE // 2)
+            end_x = cx + dx * (self.cell_size // 2)
+            end_y = cy + dy * (self.cell_size // 2)
             pygame.draw.line(self.screen, (255, 255, 0), (cx, cy), (end_x, end_y), 2)
 
         # Draw Statistics Panel
@@ -133,10 +155,21 @@ class Renderer:
         self.screen.blit(max_text, (self.slider_x + self.slider_width + 5, self.slider_y - 2))
 
     def handle_events(self, simulation=None):
-        """Handles Pygame events (quit, slider, etc.). Returns False if should quit."""
+        """Handles Pygame events (quit, slider, resize, etc.). Returns False if should quit."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            
+            # Handle window resize
+            if event.type == pygame.VIDEORESIZE:
+                self.width, self.height = event.w, event.h
+                # Recalculate cell size to fit grid in new window
+                self.cell_size = min(self.width // GRID_SIZE, self.height // GRID_SIZE)
+                # Update window size to maintain aspect ratio
+                self.width = GRID_SIZE * self.cell_size
+                self.height = GRID_SIZE * self.cell_size
+                self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
+                self._update_slider_position()
             
             # Handle slider interaction
             if simulation is not None:
