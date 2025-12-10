@@ -55,9 +55,20 @@ def run_ai(spawn_rate=None, contextual=False):
         running = True
         states = env.reset()
         
+        # Track last spawn_rate to detect slider changes
+        last_spawn_rate = env.sim.spawn_rate
+        
         while running:
-            # 1. Handle Input
-            running = renderer.handle_events()
+            # 1. Handle Input (pass simulation for slider control)
+            running = renderer.handle_events(env.sim)
+            
+            # Check if spawn rate changed via slider
+            if env.sim.spawn_rate != last_spawn_rate:
+                last_spawn_rate = env.sim.spawn_rate
+                # Sync environment with new spawn rate (for contextual learning)
+                env.set_spawn_rate(env.sim.spawn_rate)
+                if contextual:
+                    print(f"Spawn Rate changed to {env.sim.spawn_rate} - Traffic Level: {env.get_traffic_level_name()}")
             
             # 2. AI Action
             actions = {}
