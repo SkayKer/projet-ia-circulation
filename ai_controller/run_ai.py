@@ -1,5 +1,6 @@
 import sys
 import os
+import argparse
 import pygame
 
 # Ensure we can import modules from the parent directory
@@ -9,20 +10,50 @@ from traffic_sim.renderer import Renderer
 from ai_controller.traffic_env import TrafficEnv
 from ai_controller.q_agent import QLearningAgent
 
-def run_ai():
-    print("Starting AI Controlled Traffic Simulator...")
+def run_ai(spawn_rate=None, contextual=False):
+    """
+    Run the AI-controlled traffic simulator.
     
-    env = TrafficEnv()
+    Args:
+        spawn_rate: Optional spawn rate to use. If None, uses default.
+        contextual: If True, uses contextual model with traffic level in state.
+    """
+    print("=== AI Controlled Traffic Simulator ===")
+    
+    # Determine which model to load
+    if contextual:
+        model_file = "q_agent_contextual.pkl"
+        print(f"Mode: Contextual Q-Learning")
+    else:
+        model_file = "q_agent.pkl"
+        print(f"Mode: Standard Q-Learning")
+    
+    if spawn_rate is not None:
+        print(f"Spawn Rate: {spawn_rate} (cars spawn every {spawn_rate} ticks)")
+    else:
+        print(f"Spawn Rate: Default (from constants)")
+    
+    # Initialize environment
+    env = TrafficEnv(spawn_rate=spawn_rate, contextual=contextual)
+    
+    if contextual:
+        print(f"Traffic Level: {env.get_traffic_level_name()}")
+    
+    # Load agent
     agent = QLearningAgent()
-    agent.load("q_agent.pkl")
-    agent.epsilon = 0.0 # No exploration during test
+    if not os.path.exists(model_file):
+        print(f"Warning: Model file '{model_file}' not found. Using untrained agent.")
+    else:
+        agent.load(model_file)
+        print(f"Loaded model: {model_file} ({len(agent.q_table)} states)")
+    
+    agent.epsilon = 0.0  # No exploration during test
+    print()
     
     try:
         renderer = Renderer()
         running = True
-        states = env.reset() # Reset env but we need to sync with renderer's sim? 
-        # Actually TrafficEnv creates its own Simulation. 
-        # We need to use the env's simulation for rendering.
+        states = env.reset()
         
         while running:
             # 1. Handle Input
@@ -57,5 +88,16 @@ def run_ai():
             renderer.quit()
         print("Simulation ended.")
 
+def main():
+    parser = argparse.ArgumentParser(description="Run AI-controlled traffic simulator")
+    parser.add_argument("--spawn-rate", type=int, default=None,
+                        help="Spawn rate (cars spawn every N ticks). Lower = more traffic.")
+    parser.add_argument("--contextual", action="store_true",
+                        help="Use contextual Q-learning model (includes traffic level in state)")
+    args = parser.parse_args()
+    
+    run_ai(spawn_rate=args.spawn_rate, contextual=args.contextual)
+
 if __name__ == "__main__":
-    run_ai()
+    main()
+
