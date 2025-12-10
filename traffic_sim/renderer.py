@@ -20,8 +20,8 @@ class Renderer:
         self.width = GRID_SIZE * self.cell_size
         self.height = GRID_SIZE * self.cell_size
         
-        # Create resizable window
-        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
+        # Create window (fixed size, adapted to screen)
+        self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Traffic Simulator")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("Arial", 12)
@@ -159,17 +159,6 @@ class Renderer:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
-            
-            # Handle window resize
-            if event.type == pygame.VIDEORESIZE:
-                self.width, self.height = event.w, event.h
-                # Recalculate cell size to fit grid in new window
-                self.cell_size = min(self.width // GRID_SIZE, self.height // GRID_SIZE)
-                # Update window size to maintain aspect ratio
-                self.width = GRID_SIZE * self.cell_size
-                self.height = GRID_SIZE * self.cell_size
-                self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
-                self._update_slider_position()
             
             # Handle slider interaction
             if simulation is not None:
