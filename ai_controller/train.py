@@ -47,4 +47,4 @@ def train(episodes=100):
     print("Training finished. Agent saved to q_agent.pkl")
 
 if __name__ == "__main__":
-    train(episodes=10000) # Start with 50 episodes for quick test
+    train(episodes=10000)

@@ -100,7 +100,7 @@ def train_contextual(episodes=500, test_mode=False):
 
 def main():
     parser = argparse.ArgumentParser(description="Train contextual Q-learning agent")
-    parser.add_argument("--episodes", type=int, default=500, 
+    parser.add_argument("--episodes", type=int, default=10000, 
                         help="Number of training episodes (default: 500)")
     parser.add_argument("--test", action="store_true",
                         help="Quick test mode (5 episodes per spawn rate)")
