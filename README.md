@@ -13,7 +13,7 @@ Le simulateur modélise une ville avec :
 - **Des véhicules** qui se déplacent selon des règles réalistes
 - **Un système de feux** qui peut être contrôlé manuellement ou par IA
 
-## 🚀 Installation et Utilisation
+## Installation et Utilisation
 
 ### Prérequis
 
@@ -37,9 +37,9 @@ pip install numpy pygame
 
 ---
 
-## 🎮 Les 3 Méthodes de Contrôle des Feux
+## Les 3 Méthodes de Contrôle des Feux
 
-### 1. 🔄 Fixed Switch (Feux Temporisés)
+### 1. Fixed Switch (Feux Temporisés)
 
 Les feux changent automatiquement selon un timer fixe. C'est la méthode de référence sans IA.
 
@@ -51,7 +51,7 @@ python main.py
 
 ---
 
-### 2. 🤖 Q-Learning
+### 2. Q-Learning
 
 Agent IA qui apprend à optimiser les feux sans contexte de trafic global.
 
@@ -71,7 +71,7 @@ python ai_controller/run_ai.py
 
 ---
 
-### 3. 🧠 Contextual Q-Learning
+### 3. Contextual Q-Learning
 
 Agent IA avancé qui prend en compte le niveau de trafic (faible/moyen/élevé) dans son état.
 
@@ -97,7 +97,7 @@ python ai_controller/run_ai.py --contextual --spawn-rate 3
 
 ---
 
-## 📊 Benchmark des Méthodes
+## Benchmark des Méthodes
 
 Le script `benchmark.py` compare les 3 méthodes avec analyse statistique.
 
@@ -148,7 +148,7 @@ python benchmark.py --quiet --csv resultats.csv
 
 ---
 
-## 📁 Architecture du Projet
+## Architecture du Projet
 
 ### Dossier `traffic_sim/`
 
@@ -176,7 +176,7 @@ python benchmark.py --quiet --csv resultats.csv
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Paramètres dans `traffic_sim/constants.py` :
 
@@ -190,7 +190,7 @@ Paramètres dans `traffic_sim/constants.py` :
 
 ---
 
-## 📈 Algorithme d'Apprentissage
+## Algorithme d'Apprentissage
 
 L'agent IA utilise Q-Learning avec :
 
@@ -201,7 +201,7 @@ L'agent IA utilise Q-Learning avec :
 
 ---
 
-## 🔮 Améliorations Futures
+## Améliorations Futures
 
 - **Deep Q-Networks (DQN)** : Utilisation de réseaux de neurones pour une meilleure généralisation
 - Interface utilisateur pour configuration
@@ -210,7 +210,8 @@ L'agent IA utilise Q-Learning avec :
 
 ---
 
-## 👥 Contributeurs
+## Contributeurs
 
 - Evan Bodineau
 - Antonin Urbain
+- Grégoire Proust
