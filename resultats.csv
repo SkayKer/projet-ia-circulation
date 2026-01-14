@@ -1,0 +1,13 @@
+Scenario,Spawn Rate,Control Method,Avg Wait Time (s),Max Wait Time (s),Avg Queue Length,Max Queue Length,Total Cars Spawned
+High Traffic,1,Fixed Switch,7.10,23.70,5.93,18,1391
+High Traffic,1,Q-Learning,7.59,22.90,4.82,18,1298
+High Traffic,1,Contextual Q-Learning,27.05,198.70,1.54,14,640
+Medium-High,2,Fixed Switch,5.67,19.10,5.10,18,1253
+Medium-High,2,Q-Learning,6.59,19.00,3.87,15,1263
+Medium-High,2,Contextual Q-Learning,6.10,18.30,4.30,15,1291
+Medium,5,Fixed Switch,3.16,11.60,2.62,8,728
+Medium,5,Q-Learning,1.88,7.10,1.59,6,732
+Medium,5,Contextual Q-Learning,1.69,5.90,1.82,7,727
+Low Traffic,10,Fixed Switch,2.58,10.20,1.38,5,372
+Low Traffic,10,Q-Learning,1.38,6.30,1.17,4,367
+Low Traffic,10,Contextual Q-Learning,1.24,4.40,0.96,4,369

@@ -7,61 +7,21 @@ Ce projet est un simulateur de circulation urbaine qui utilise l'intelligence ar
 ## Fonctionnement Général
 
 Le simulateur modélise une ville avec :
+
 - **Des routes** organisées en grille
 - **Des intersections** contrôlées par des feux de circulation
 - **Des véhicules** qui se déplacent selon des règles réalistes
 - **Un système de feux** qui peut être contrôlé manuellement ou par IA
 
-## Architecture du Projet
-
-### Dossier `traffic_sim/`
-Contient le cœur de la simulation :
-
-- **`simulation.py`** : Classe principale qui gère l'état global de la simulation, le spawn des voitures, et les statistiques
-- **`car.py`** : Modèle des véhicules avec logique de mouvement, gestion des files d'attente et effet accordéon
-- **`traffic_light.py`** : Gestion des feux de circulation avec états (rouge/vert) et modes manuel/automatique
-- **`map.py`** : Définition de la carte urbaine avec routes, intersections et bâtiments
-- **`renderer.py`** : Affichage graphique de la simulation
-- **`constants.py`** : Paramètres configurables (vitesse de spawn, délais, dimensions, etc.)
-
-### Dossier `ai_controller/`
-Contient l'intelligence artificielle :
-
-- **`q_agent.py`** : Agent Q-learning qui apprend à optimiser les feux de circulation
-- **`traffic_env.py`** : Environnement de reinforcement learning pour l'IA
-- **`train.py`** : Script d'entraînement de l'agent IA
-- **`run_ai.py`** : Exécution de la simulation avec l'IA en contrôle
-
-### Fichiers Racine
-
-- **`main.py`** : Point d'entrée principal pour lancer la simulation avec interface graphique
-- **`test_headless.py`** : Version de test sans affichage pour les benchmarks
-
-## Fonctionnalités Principales
-
-### Simulation Réaliste
-- **Spawn dynamique** : Les voitures apparaissent aléatoirement aux points de spawn
-- **Gestion des intersections** : Logique de priorité et prévention des collisions
-- **Effet accordéon** : Délai de redémarrage réaliste pour les voitures à l'arrêt
-- **Statistiques** : Suivi des temps d'attente, longueurs de files, débit de circulation
-
-### Intelligence Artificielle
-- **Q-Learning** : Algorithme d'apprentissage par renforcement
-- **États** : Représentation de l'état des intersections (files d'attente par direction)
-- **Actions** : Changement de phase des feux (vertical/horizontal)
-- **Récompenses** : Basées sur la réduction des temps d'attente
-
-### Visualisation
-- **Interface graphique** : Affichage en temps réel de la simulation
-- **Mode headless** : Exécution sans affichage pour l'entraînement et les tests
-
-## Installation et Utilisation
+## 🚀 Installation et Utilisation
 
 ### Prérequis
+
 - Python 3.8+
-- Bibliothèques : numpy, pygame (pour l'affichage)
+- Bibliothèques : numpy, pygame
 
 ### Installation
+
 ```bash
 # Cloner le repository
 git clone https://github.com/SkayKer/projet-ia-circulation.git
@@ -75,65 +35,182 @@ source .venv/bin/activate  # Sur Windows: .venv\Scripts\activate
 pip install numpy pygame
 ```
 
-### Utilisation
+---
 
-#### Simulation avec interface graphique
+## 🎮 Les 3 Méthodes de Contrôle des Feux
+
+### 1. 🔄 Fixed Switch (Feux Temporisés)
+
+Les feux changent automatiquement selon un timer fixe. C'est la méthode de référence sans IA.
+
 ```bash
 python main.py
 ```
 
-#### Entraînement de l'IA
+> Utilisez le slider dans l'interface pour ajuster le taux de spawn des voitures.
+
+---
+
+### 2. 🤖 Q-Learning
+
+Agent IA qui apprend à optimiser les feux sans contexte de trafic global.
+
+**Entraînement :**
+
 ```bash
-python ai_controller/train.py
+python ai_controller/train.py --episodes 1000
 ```
 
-#### Test de l'IA entraînée
+> Crée le fichier `q_agent.pkl` avec le modèle entraîné.
+
+**Exécution :**
+
 ```bash
 python ai_controller/run_ai.py
 ```
 
-#### Tests sans affichage
+---
+
+### 3. 🧠 Contextual Q-Learning
+
+Agent IA avancé qui prend en compte le niveau de trafic (faible/moyen/élevé) dans son état.
+
+**Entraînement :**
+
 ```bash
-python test_headless.py
+python ai_controller/contextual_train.py --episodes 500
 ```
 
-## Configuration
+> Crée le fichier `q_agent_contextual.pkl` avec le modèle contextuel.
 
-Les paramètres principaux peuvent être modifiés dans `traffic_sim/constants.py` :
+**Exécution :**
 
-- `SPAWN_RATE` : Fréquence d'apparition des voitures
-- `CARS_PER_SPAWN` : Nombre de voitures par spawn
-- `RESTART_DELAY` : Délai de redémarrage (effet accordéon)
-- `MAX_CARS` : Nombre maximum de voitures simultanées
-- `FPS` : Vitesse de simulation
+```bash
+python ai_controller/run_ai.py --contextual
+```
 
-## Métriques et Statistiques
+**Avec un spawn rate personnalisé :**
 
-La simulation suit plusieurs indicateurs de performance :
+```bash
+python ai_controller/run_ai.py --contextual --spawn-rate 3
+```
 
-- **Temps d'attente moyen** : Par véhicule et global
-- **Longueur des files** : Maximum et moyenne par intersection
-- **Débit** : Nombre de véhicules traversant par minute
-- **Temps d'attente sur 10 secondes** : Moyenne glissante
+---
 
-## Algorithme d'Apprentissage
+## 📊 Benchmark des Méthodes
+
+Le script `benchmark.py` compare les 3 méthodes avec analyse statistique.
+
+### Benchmark Rapide (5 simulations par méthode)
+
+```bash
+python benchmark.py --test
+```
+
+### Benchmark Complet (50 simulations par méthode)
+
+```bash
+python benchmark.py
+```
+
+### Options Avancées
+
+```bash
+# Nombre personnalisé de simulations
+python benchmark.py --runs 100
+
+# Durée personnalisée (en ticks, 1 tick = 0.1s)
+python benchmark.py --duration 3000
+
+# Export CSV
+python benchmark.py --csv resultats.csv
+
+# Mode silencieux
+python benchmark.py --quiet --csv resultats.csv
+```
+
+### Scénarios Testés
+
+| Scénario     | Spawn Rate | Description                    |
+| ------------ | ---------- | ------------------------------ |
+| High Traffic | 1          | 2 voitures/tick (trafic dense) |
+| Medium-High  | 2          | Trafic soutenu                 |
+| Medium       | 5          | Trafic modéré                  |
+| Low Traffic  | 10         | Trafic léger                   |
+| Fluctuating  | Variable   | Simule les heures de pointe    |
+
+### Métriques Collectées
+
+- **Temps d'attente moyen** (moyenne ± écart-type)
+- **Temps d'attente maximum**
+- **Longueur moyenne des files**
+- **Longueur maximum des files**
+
+---
+
+## 📁 Architecture du Projet
+
+### Dossier `traffic_sim/`
+
+- **`simulation.py`** : Classe principale de simulation
+- **`car.py`** : Modèle des véhicules
+- **`traffic_light.py`** : Gestion des feux de circulation
+- **`map.py`** : Définition de la carte urbaine
+- **`renderer.py`** : Affichage graphique
+- **`constants.py`** : Paramètres configurables
+
+### Dossier `ai_controller/`
+
+- **`q_agent.py`** : Agent Q-learning
+- **`traffic_env.py`** : Environnement RL
+- **`train.py`** : Entraînement Q-Learning
+- **`contextual_train.py`** : Entraînement Contextual Q-Learning
+- **`run_ai.py`** : Exécution avec IA
+
+### Fichiers Racine
+
+- **`main.py`** : Simulation avec feux temporisés
+- **`benchmark.py`** : Comparaison des 3 méthodes
+- **`q_agent.pkl`** : Modèle Q-Learning entraîné
+- **`q_agent_contextual.pkl`** : Modèle Contextual Q-Learning entraîné
+
+---
+
+## ⚙️ Configuration
+
+Paramètres dans `traffic_sim/constants.py` :
+
+| Paramètre        | Valeur par défaut | Description                            |
+| ---------------- | ----------------- | -------------------------------------- |
+| `SPAWN_RATE`     | 2                 | Voitures spawn tous les N ticks        |
+| `CARS_PER_SPAWN` | 2                 | Nombre de voitures par spawn           |
+| `MAX_CARS`       | 100               | Maximum de voitures simultanées        |
+| `FPS`            | 10                | Vitesse de simulation                  |
+| `RESTART_DELAY`  | 2                 | Délai de redémarrage (effet accordéon) |
+
+---
+
+## 📈 Algorithme d'Apprentissage
 
 L'agent IA utilise Q-Learning avec :
 
-- **État** : Vecteur des longueurs de files pour chaque direction des intersections
-- **Actions** : Changement de phase des feux (2 phases possibles)
-- **Récompense** : Négative proportionnelle aux temps d'attente cumulés
-- **Exploration** : ε-greedy avec décroissance exponentielle
+- **État** : Vecteur des files d'attente discrétisées + phase actuelle (+niveau de trafic pour contextuel)
+- **Actions** : 2 phases (vertical vert / horizontal vert)
+- **Récompense** : -1 × (temps d'attente + longueur files)
+- **Exploration** : ε-greedy avec décroissance
 
-## Améliorations Futures
+---
 
-- Support multi-intersections
-- Algorithmes d'IA plus avancés (Deep Q-Learning)
+## 🔮 Améliorations Futures
+
+- **Deep Q-Networks (DQN)** : Utilisation de réseaux de neurones pour une meilleure généralisation
 - Interface utilisateur pour configuration
 - Statistiques détaillées et graphiques
-- Modes de simulation variés (heure de pointe, accident, etc.)
+- Modes de simulation variés (accident, travaux, etc.)
 
-## Contributeurs
+---
+
+## 👥 Contributeurs
 
 - Evan Bodineau
 - Antonin Urbain
