@@ -20,7 +20,7 @@ from ai_controller.q_agent import QLearningAgent
 # Define spawn rates to train on
 SPAWN_RATES = [1, 2, 3, 5, 10]
 
-def train_contextual(episodes=500, test_mode=False):
+def train_contextual(episodes=100, test_mode=False):
     """
     Train a contextual Q-learning agent across different traffic levels.
     
@@ -100,7 +100,7 @@ def train_contextual(episodes=500, test_mode=False):
 
 def main():
     parser = argparse.ArgumentParser(description="Train contextual Q-learning agent")
-    parser.add_argument("--episodes", type=int, default=10000, 
+    parser.add_argument("--episodes", type=int, default=1000, 
                         help="Number of training episodes (default: 500)")
     parser.add_argument("--test", action="store_true",
                         help="Quick test mode (5 episodes per spawn rate)")

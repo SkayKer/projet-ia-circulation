@@ -45,9 +45,21 @@ SPAWN_RATE_SCENARIOS = {
 DEFAULT_DURATION = 2000  # ticks
 TEST_DURATION = 200  # ticks for quick testing
 
-# Fluctuating traffic pattern configuration
-FLUCTUATION_INTERVAL = 300  # ticks between spawn rate changes (~30 seconds at 10 FPS)
-FLUCTUATION_RATES = [1, 2, 3, 5, 8, 10, 5, 3, 2, 1]  # Cycle through these rates
+# Fluctuating traffic pattern configuration - REALISTIC DAILY PROPORTIONS
+# Real traffic distribution (approximate):
+#   - Rush hours (high traffic): ~10% of day (2x 1h = 2h/24h)
+#   - Medium traffic: ~30% of day (morning/afternoon activity)
+#   - Low traffic: ~60% of day (night, early morning, late evening)
+# Pattern simulates: Night → Morning rush → Day → Evening rush → Night
+FLUCTUATION_INTERVAL = 200  # ticks between spawn rate changes (~20 seconds at 10 FPS)
+FLUCTUATION_RATES = [
+    # Night/Early morning - Low traffic (6 intervals = 60%)
+    10, 10, 8, 8, 10, 10,
+    # Morning rush hour - High traffic (1 interval = 10%)
+    1,
+    # Daytime - Medium traffic (3 intervals = 30%)
+    3, 5, 5,
+]  # Total 10 intervals, cycling through
 
 
 @dataclass
@@ -383,38 +395,96 @@ def print_summary_comparison(results: Dict[str, Dict[str, AggregatedResult]], nu
 
 
 def export_to_csv(results: Dict[str, Dict[str, AggregatedResult]], filename: str, num_runs: int):
-    """Export results to CSV file with all statistical metrics."""
+    """Export results to CSV file with all statistical metrics (French version)."""
+    methods = ["Fixed Switch", "Q-Learning", "Contextual Q-Learning"]
+    methods_fr = {
+        "Fixed Switch": "Feux Temporisés",
+        "Q-Learning": "Q-Learning",
+        "Contextual Q-Learning": "Q-Learning Contextuel"
+    }
+    scenarios_fr = {
+        "High Traffic": "Trafic Élevé",
+        "Medium-High": "Trafic Moyen-Élevé",
+        "Medium": "Trafic Moyen",
+        "Low Traffic": "Trafic Faible",
+        "Fluctuating": "Trafic Fluctuant"
+    }
+    
     with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
+        writer = csv.writer(csvfile, delimiter=';')  # Use ; for French Excel
+        
+        # ===== SECTION RÉSUMÉ =====
+        writer.writerow(["=== RÉSUMÉ GLOBAL ==="])
+        writer.writerow([])
+        
+        # Calculate overall averages for ranking
+        method_totals = {m: {"wait_sum": 0, "queue_sum": 0, "count": 0} for m in methods}
+        for scenario_results in results.values():
+            for method, r in scenario_results.items():
+                method_totals[method]["wait_sum"] += r.mean_wait_time
+                method_totals[method]["queue_sum"] += r.mean_queue_length
+                method_totals[method]["count"] += 1
+        
+        # Sort by average wait time (best = lowest)
+        rankings = []
+        for method in methods:
+            t = method_totals[method]
+            if t["count"] > 0:
+                avg_wait = t["wait_sum"] / t["count"]
+                avg_queue = t["queue_sum"] / t["count"]
+                rankings.append((method, avg_wait, avg_queue))
+        
+        rankings.sort(key=lambda x: x[1])  # Sort by avg wait time
+        
+        writer.writerow(["Rang", "Méthode de Contrôle", "Temps Attente Moyen (s)", "Longueur File Moyenne", "Meilleur?"])
+        for i, (method, avg_wait, avg_queue) in enumerate(rankings):
+            is_best = "*** MEILLEUR ***" if i == 0 else ""
+            writer.writerow([i + 1, methods_fr[method], f"{avg_wait:.4f}", f"{avg_queue:.4f}", is_best])
+        
+        writer.writerow([])
+        writer.writerow([f"Meilleure Méthode: {methods_fr[rankings[0][0]]}"])
+        writer.writerow([f"Nombre de Simulations: {len(results) * num_runs} par méthode"])
+        writer.writerow([])
+        writer.writerow([])
+        
+        # ===== RÉSULTATS DÉTAILLÉS =====
+        writer.writerow(["=== RÉSULTATS DÉTAILLÉS PAR SCÉNARIO ==="])
+        writer.writerow([])
         
         # Header
         writer.writerow([
-            "Scenario", "Spawn Rate", "Control Method", "Num Runs",
-            "Mean Wait (s)", "Std Wait (s)", "Min Wait (s)", "Max Wait (s)", "CI95 Wait (s)",
-            "Mean Max Wait (s)", "Std Max Wait (s)",
-            "Mean Queue", "Std Queue", "Min Queue", "Max Queue", "CI95 Queue",
-            "Mean Max Queue", "Std Max Queue",
-            "Mean Cars Spawned"
+            "Scénario", "Taux de Spawn", "Méthode", "Nb Simulations",
+            "Attente Moy (s)", "Écart-Type Attente", "Attente Min (s)", "Attente Max (s)", "IC95 Attente",
+            "Attente Max Moy (s)", "Écart-Type Attente Max",
+            "File Moy", "Écart-Type File", "File Min", "File Max", "IC95 File",
+            "File Max Moy", "Écart-Type File Max",
+            "Voitures Générées Moy", "Meilleur du Scénario?"
         ])
         
-        # Data
+        # Data with best-in-scenario marker
         for scenario_name, scenario_results in results.items():
             spawn_rate = SPAWN_RATE_SCENARIOS[scenario_name]
-            rate_str = "fluctuating" if spawn_rate is None else str(spawn_rate)
+            rate_str = "variable" if spawn_rate is None else str(spawn_rate)
+            scenario_fr = scenarios_fr.get(scenario_name, scenario_name)
+            
+            # Find best method for this scenario
+            best_in_scenario = min(scenario_results.items(), key=lambda x: x[1].mean_wait_time)[0]
             
             for method_name, r in scenario_results.items():
+                is_best = "MEILLEUR" if method_name == best_in_scenario else ""
                 writer.writerow([
-                    scenario_name, rate_str, method_name, num_runs,
+                    scenario_fr, rate_str, methods_fr[method_name], num_runs,
                     f"{r.mean_wait_time:.4f}", f"{r.std_wait_time:.4f}", 
                     f"{r.min_wait_time:.4f}", f"{r.max_wait_time:.4f}", f"{r.ci95_wait_time:.4f}",
                     f"{r.mean_max_wait_time:.4f}", f"{r.std_max_wait_time:.4f}",
                     f"{r.mean_queue_length:.4f}", f"{r.std_queue_length:.4f}",
                     f"{r.min_queue_length:.4f}", f"{r.max_queue_length:.4f}", f"{r.ci95_queue_length:.4f}",
                     f"{r.mean_max_queue:.4f}", f"{r.std_max_queue:.4f}",
-                    f"{r.mean_cars_spawned:.2f}"
+                    f"{r.mean_cars_spawned:.2f}",
+                    is_best
                 ])
     
-    print(f"Results exported to: {filename}")
+    print(f"Résultats exportés vers: {filename}")
 
 
 def main():
